@@ -1139,8 +1139,28 @@ class OptionsResolver implements Options
         return $value;
     }
 
-    private function verifyTypes(string $type, mixed $value, array &$invalidTypes, int $level = 0): bool
+    private function verifyTypes(string $type, mixed $value, ?array &$invalidTypes = null, int $level = 0): bool
     {
+        $allowedTypes = $this->splitOutsideParenthesis($type);
+        if (\count($allowedTypes) > 1) {
+            foreach ($allowedTypes as $allowedType) {
+                if ($this->verifyTypes($allowedType, $value)) {
+                    return true;
+                }
+            }
+
+            if (\is_array($invalidTypes) && (!$invalidTypes || $level > 0)) {
+                $invalidTypes[get_debug_type($value)] = true;
+            }
+
+            return false;
+        }
+
+        $type = $allowedTypes[0];
+        if (str_starts_with($type, '(') && str_ends_with($type, ')')) {
+            return $this->verifyTypes(substr($type, 1, -1), $value, $invalidTypes, $level);
+        }
+
         if (\is_array($value) && str_ends_with($type, '[]')) {
             $type = substr($type, 0, -2);
             $valid = true;
@@ -1158,11 +1178,45 @@ class OptionsResolver implements Options
             return true;
         }
 
-        if (!$invalidTypes || $level > 0) {
+        if (\is_array($invalidTypes) && (!$invalidTypes || $level > 0)) {
             $invalidTypes[get_debug_type($value)] = true;
         }
 
         return false;
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function splitOutsideParenthesis(string $type): array
+    {
+        $parts = [];
+        $currentPart = '';
+        $parenthesisLevel = 0;
+
+        $typeLength = \strlen($type);
+        for ($i = 0; $i < $typeLength; ++$i) {
+            $char = $type[$i];
+
+            if ('(' === $char) {
+                ++$parenthesisLevel;
+            } elseif (')' === $char) {
+                --$parenthesisLevel;
+            }
+
+            if ('|' === $char && 0 === $parenthesisLevel) {
+                $parts[] = $currentPart;
+                $currentPart = '';
+            } else {
+                $currentPart .= $char;
+            }
+        }
+
+        if ('' !== $currentPart) {
+            $parts[] = $currentPart;
+        }
+
+        return $parts;
     }
 
     /**

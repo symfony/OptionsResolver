@@ -778,6 +778,44 @@ class OptionsResolverTest extends TestCase
         $this->resolver->setAllowedTypes('foo', 'string');
     }
 
+    public function testResolveTypedWithUnion()
+    {
+        $this->resolver->setDefined('foo');
+        $this->resolver->setAllowedTypes('foo', 'string|int');
+
+        $options = $this->resolver->resolve(['foo' => 1]);
+        $this->assertSame(['foo' => 1], $options);
+
+        $options = $this->resolver->resolve(['foo' => '1']);
+        $this->assertSame(['foo' => '1'], $options);
+    }
+
+    public function testResolveTypedWithUnionOfClasse()
+    {
+        $this->resolver->setDefined('foo');
+        $this->resolver->setAllowedTypes('foo', \DateTime::class.'|'.\DateTimeImmutable::class);
+
+        $datetime = new \DateTime();
+        $options = $this->resolver->resolve(['foo' => $datetime]);
+        $this->assertSame(['foo' => $datetime], $options);
+
+        $datetime = new \DateTimeImmutable();
+        $options = $this->resolver->resolve(['foo' => $datetime]);
+        $this->assertSame(['foo' => $datetime], $options);
+    }
+
+    public function testResolveTypedWithUnionOfArray()
+    {
+        $this->resolver->setDefined('foo');
+        $this->resolver->setAllowedTypes('foo', '(string|int)[]|(bool|int)[]');
+
+        $options = $this->resolver->resolve(['foo' => [1, '1']]);
+        $this->assertSame(['foo' => [1, '1']], $options);
+
+        $options = $this->resolver->resolve(['foo' => [1, true]]);
+        $this->assertSame(['foo' => [1, true]], $options);
+    }
+
     public function testResolveTypedArray()
     {
         $this->resolver->setDefined('foo');
@@ -785,6 +823,15 @@ class OptionsResolverTest extends TestCase
         $options = $this->resolver->resolve(['foo' => ['bar', 'baz']]);
 
         $this->assertSame(['foo' => ['bar', 'baz']], $options);
+    }
+
+    public function testResolveTypedArrayWithUnion()
+    {
+        $this->resolver->setDefined('foo');
+        $this->resolver->setAllowedTypes('foo', '(string|int)[]');
+        $options = $this->resolver->resolve(['foo' => ['bar', 1]]);
+
+        $this->assertSame(['foo' => ['bar', 1]], $options);
     }
 
     public function testFailIfSetAllowedTypesFromLazyOption()
@@ -878,6 +925,7 @@ class OptionsResolverTest extends TestCase
             [[null], ['string[]', 'string'], 'The option "option" with value array is expected to be of type "string[]" or "string", but one of the elements is of type "null".'],
             [['string', null], ['string[]', 'string'], 'The option "option" with value array is expected to be of type "string[]" or "string", but one of the elements is of type "null".'],
             [[\stdClass::class], ['string'], 'The option "option" with value array is expected to be of type "string", but is of type "array".'],
+            [['foo', 12], '(string|bool)[]', 'The option "option" with value array is expected to be of type "(string|bool)[]", but one of the elements is of type "int".'],
         ];
     }
 
@@ -1899,6 +1947,26 @@ class OptionsResolverTest extends TestCase
         ], $this->resolver->resolve([
             'foo' => [
                 [1, 2],
+            ],
+        ]));
+    }
+
+    public function testNestedArraysWithUnions()
+    {
+        $this->resolver->setDefined('foo');
+        $this->resolver->setAllowedTypes('foo', '(int|float|(int|float)[])[]');
+
+        $this->assertEquals([
+            'foo' => [
+                1,
+                2.0,
+                [1, 2.0],
+            ],
+        ], $this->resolver->resolve([
+            'foo' => [
+                1,
+                2.0,
+                [1, 2.0],
             ],
         ]));
     }
