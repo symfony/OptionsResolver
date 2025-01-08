@@ -1141,6 +1141,7 @@ class OptionsResolver implements Options
 
     private function verifyTypes(string $type, mixed $value, ?array &$invalidTypes = null, int $level = 0): bool
     {
+        $type = trim($type);
         $allowedTypes = $this->splitOutsideParenthesis($type);
         if (\count($allowedTypes) > 1) {
             foreach ($allowedTypes as $allowedType) {

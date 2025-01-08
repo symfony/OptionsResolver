@@ -790,6 +790,18 @@ class OptionsResolverTest extends TestCase
         $this->assertSame(['foo' => '1'], $options);
     }
 
+    public function testResolveTypedWithUnionAndWhitespaces()
+    {
+        $this->resolver->setDefined('foo');
+        $this->resolver->setAllowedTypes('foo', 'string | int');
+
+        $options = $this->resolver->resolve(['foo' => 1]);
+        $this->assertSame(['foo' => 1], $options);
+
+        $options = $this->resolver->resolve(['foo' => '1']);
+        $this->assertSame(['foo' => '1'], $options);
+    }
+
     public function testResolveTypedWithUnionOfClasse()
     {
         $this->resolver->setDefined('foo');
